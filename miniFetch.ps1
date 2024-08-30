@@ -2,22 +2,21 @@
 function Get-SystemInfo {
     $os = Get-WmiObject -Class Win32_OperatingSystem
     $kernel = $os.Version
-    $shell = $env:SHELL -replace ".*\\(.*)", '$1'  # Extract just the shell name
-    if (-not $shell) { $shell = "PowerShell" }  # Default to PowerShell if $env:SHELL is not set
-
+    $shell = if ($env:SHELL) { $env:SHELL -replace ".*\\(.*)", '$1' } else { "PowerShell" }
+    
     # Convert LastBootUpTime to DateTime and calculate uptime
     try {
         $lastBootUpTime = [System.Management.ManagementDateTimeConverter]::ToDateTime($os.LastBootUpTime)
     } catch {
         $lastBootUpTime = Get-Date
     }
+    
     $uptime = New-TimeSpan -Start $lastBootUpTime
-
     $memory = Get-WmiObject -Class Win32_OperatingSystem | 
               Select-Object @{Name="UsedMemoryMB";Expression={[math]::Round(($_.TotalVisibleMemorySize - $_.FreePhysicalMemory)/1024, 0)}},
                             @{Name="TotalMemoryMB";Expression={[math]::Round($_.TotalVisibleMemorySize/1024, 0)}}
 
-    return @{
+    @{
         "os" = $os.Caption
         "kernel" = $kernel
         "shell" = $shell
@@ -33,27 +32,23 @@ function Show-StyledSystemInfo {
     $hostname = $env:COMPUTERNAME
 
     # Color settings
-    $headerColor = "White"
-    $labelColor = "Red"
-    $valueColor = "Blue"
-    $dividerColor = "DarkGray"
+    $colors = @{
+        Header = "White"
+        Label = "Red"
+        Value = "Blue"
+        Divider = "DarkGray"
+    }
 
     # Header
     Write-Host
-    Write-Host " $username@$hostname " -ForegroundColor $headerColor
-    Write-Host ("-" * ($username.Length + $hostname.Length + 1 + 2)) -ForegroundColor $dividerColor
+    Write-Host " $username@$hostname " -ForegroundColor $colors.Header
+    Write-Host ("-" * ($username.Length + $hostname.Length + 3)) -ForegroundColor $colors.Divider
 
     # System Info
-    Write-Host " OS      : " -ForegroundColor $labelColor -NoNewline
-    Write-Host $info.os -ForegroundColor $valueColor
-    Write-Host " Kernel  : " -ForegroundColor $labelColor -NoNewline
-    Write-Host $info.kernel -ForegroundColor $valueColor
-    Write-Host " Shell   : " -ForegroundColor $labelColor -NoNewline
-    Write-Host $info.shell -ForegroundColor $valueColor
-    Write-Host " Uptime  : " -ForegroundColor $labelColor -NoNewline
-    Write-Host $info.uptime -ForegroundColor $valueColor
-    Write-Host " Memory  : " -ForegroundColor $labelColor -NoNewline
-    Write-Host $info.memory -ForegroundColor $valueColor
+    foreach ($item in $info.GetEnumerator()) {
+        Write-Host (" $($item.Key.PadRight(8)) : ") -ForegroundColor $colors.Label -NoNewline
+        Write-Host $item.Value -ForegroundColor $colors.Value
+    }
     Write-Host
 }
 
