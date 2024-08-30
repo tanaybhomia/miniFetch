@@ -1,4 +1,4 @@
-# MiniFetch
+# miniFetch 💽
 
 MiniFetch is a simple fetch script for Windows that displays system information in a visually appealing way.
 
